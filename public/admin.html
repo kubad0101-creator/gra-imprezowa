@@ -3,63 +3,217 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Administratora</title>
+    <title>Zaawansowany Panel Admina - Party Protocol</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #ddd; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
-        button { padding: 10px 15px; cursor: pointer; background: #333; color: white; border: none; border-radius: 5px;}
-        input { padding: 10px; margin-right: 10px; width: 200px; }
-        li { margin: 10px 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        h1, h2 { color: #2c3e50; margin-top: 0; }
+        
+        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        button { padding: 12px 20px; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; transition: 0.2s; }
+        button:hover { opacity: 0.9; }
+        .btn-start { background: #27ae60; color: white; }
+        .btn-stop { background: #c0392b; color: white; }
+        .btn-add { background: #2980b9; color: white; width: 100%; margin-top: 15px; }
+        .btn-delete { background: #e74c3c; color: white; padding: 5px 10px; font-size: 12px; }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #7f8c8d; }
+        input[type="text"], select { width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+        
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px dashed #ccc;}
+        
+        .question-list { list-style: none; padding: 0; }
+        .question-item { background: #fdfdfd; border-left: 5px solid #3498db; padding: 15px; margin-bottom: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);}
+        .q-meta { font-size: 12px; color: #7f8c8d; background: #ecf0f1; padding: 3px 8px; border-radius: 10px; margin-bottom: 5px; display: inline-block;}
+        .q-text { font-size: 16px; font-weight: bold; margin-bottom: 5px;}
+        .q-details { font-size: 13px; color: #2c3e50; }
     </style>
 </head>
 <body>
-    <h1>🔧 Panel Administratora</h1>
+
+<div class="container">
+    <h1>👑 Panel Główny - Party Protocol</h1>
+
     <div class="card">
-        <h2>Sterowanie Grą</h2>
-        <button onclick="startRound()" style="background: green;">Wylosuj i Start Rundy</button>
-        <button onclick="backToLobby()" style="background: red;">Wróć do Lobby</button>
+        <h2>🎮 Sterowanie Ekranem Głównym (TV)</h2>
+        <div class="controls-grid">
+            <button class="btn-start" onclick="startRound()">Wylosuj Kategorię i Rozpocznij Rundę</button>
+            <button class="btn-stop" onclick="backToLobby()">Przerwij i Wróć do Lobby</button>
+        </div>
     </div>
+
     <div class="card">
-        <h2>Dodaj Nowe Pytanie (Baza Danych)</h2>
-        <input type="text" id="qCat" placeholder="Kategoria">
-        <input type="text" id="qText" placeholder="Treść Pytania">
-        <input type="text" id="qAns" placeholder="Poprawna Odpowiedź">
-        <button onclick="addQuestion()" style="background: blue;">Dodaj Pytanie</button>
+        <h2>➕ Dodaj Nowe Pytanie/Zadanie</h2>
+        
+        <div class="form-group">
+            <label>Wybierz Kategorię (Jedna z 16):</label>
+            <select id="qCat">
+                <option value="1. Szybki Strzał">1. Szybki Strzał (ABCD)</option>
+                <option value="2. Sąd Społeczny">2. Sąd Społeczny (Typowanie Graczy)</option>
+                <option value="3. Inżynieria i Kalkulacje">3. Inżynieria i Kalkulacje (Matematyka otwarta)</option>
+                <option value="4. Globtroter">4. Globtroter (Geografia ABCD)</option>
+                <option value="5. Licytacja w Dół">5. Licytacja w Dół (Wyzwania fizyczne)</option>
+                <option value="6. Historyczna Oś Czasu">6. Historyczna Oś Czasu (Suwak dekad)</option>
+                <option value="7. Iluzja Optyczna">7. Iluzja Optyczna (Makro zdjęcia)</option>
+                <option value="8. Detektyw Zbiegowisk">8. Detektyw Zbiegowisk (Prawda o grupie)</option>
+                <option value="9. Archiwum X">9. Archiwum X (Zrzut zdjęć)</option>
+                <option value="10. Pikasso pod Presją">10. Pikasso pod Presją (Rysowanie)</option>
+                <option value="11. Biologia i Ciało">11. Biologia i Ciało (Przetrwanie ABCD)</option>
+                <option value="12. Loża Szyderców">12. Loża Szyderców (Debata - tezy)</option>
+                <option value="13. Side Quest">13. Side Quest (Pamięć o grze)</option>
+                <option value="14. Finał Finałów">14. Finał Finałów (Ostateczna Licytacja)</option>
+                <option value="15. Pojedynek Desperata">15. Pojedynek Desperata (Baza niszowa)</option>
+                <option value="16. Tajny Agent">16. Tajny Agent (Cele poboczne w tle)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Treść Pytania / Zadania / Tezy:</label>
+            <input type="text" id="qText" placeholder="Np. Ile zębów ma dorosły człowiek?">
+        </div>
+
+        <div class="form-group">
+            <label>Poprawna Odpowiedź (Zostaw puste dla zadań otwartych):</label>
+            <input type="text" id="qAns" placeholder="Np. 32">
+        </div>
+
+        <label>Warianty Odpowiedzi (Wypełnij tylko dla pytań zamkniętych, np. ABCD):</label>
+        <div class="options-grid">
+            <input type="text" id="opt1" placeholder="Opcja 1 (np. Poprawna)">
+            <input type="text" id="opt2" placeholder="Opcja 2 (Błędna)">
+            <input type="text" id="opt3" placeholder="Opcja 3 (Błędna)">
+            <input type="text" id="opt4" placeholder="Opcja 4 (Błędna)">
+        </div>
+
+        <button class="btn-add" onclick="addQuestion()">ZAPISZ DO BAZY</button>
     </div>
+
     <div class="card">
-        <h2>Lista Pytań w Bazie</h2>
-        <ul id="q-list"></ul>
+        <h2>📚 Twoja Baza Pytań</h2>
+        <div class="form-group">
+            <label>Filtruj bazę (Lokalnie):</label>
+            <select id="filterCat" onchange="fetchQuestions()">
+                <option value="ALL">Pokaż Wszystkie Kategorie</option>
+                <option value="1. Szybki Strzał">1. Szybki Strzał</option>
+                <option value="2. Sąd Społeczny">2. Sąd Społeczny</option>
+                <option value="3. Inżynieria i Kalkulacje">3. Inżynieria i Kalkulacje</option>
+                <option value="4. Globtroter">4. Globtroter</option>
+                <option value="5. Licytacja w Dół">5. Licytacja w Dół</option>
+                <option value="6. Historyczna Oś Czasu">6. Historyczna Oś Czasu</option>
+                <option value="7. Iluzja Optyczna">7. Iluzja Optyczna</option>
+                <option value="8. Detektyw Zbiegowisk">8. Detektyw Zbiegowisk</option>
+                <option value="9. Archiwum X">9. Archiwum X</option>
+                <option value="10. Pikasso pod Presją">10. Pikasso pod Presją</option>
+                <option value="11. Biologia i Ciało">11. Biologia i Ciało</option>
+                <option value="12. Loża Szyderców">12. Loża Szyderców</option>
+                <option value="13. Side Quest">13. Side Quest</option>
+                <option value="14. Finał Finałów">14. Finał Finałów</option>
+                <option value="15. Pojedynek Desperata">15. Pojedynek Desperata</option>
+                <option value="16. Tajny Agent">16. Tajny Agent</option>
+            </select>
+        </div>
+        
+        <ul id="q-list" class="question-list">
+            </ul>
     </div>
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        function startRound() { socket.emit('adminStartRound'); }
-        function backToLobby() { socket.emit('adminBackToLobby'); }
-        async function fetchQuestions() {
-            const res = await fetch('/api/questions');
-            const data = await res.json();
-            const list = document.getElementById('q-list');
-            list.innerHTML = '';
-            data.forEach(q => {
-                list.innerHTML += `<li>[${q.category}] ${q.q} - <b>${q.answer}</b> <button onclick="deleteQuestion(${q.id})">Usuń</button></li>`;
-            });
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+
+    // Funkcje sterowania grą na TV
+    function startRound() { socket.emit('adminStartRound'); }
+    function backToLobby() { socket.emit('adminBackToLobby'); }
+
+    // Pobieranie pytań i renderowanie listy
+    async function fetchQuestions() {
+        const res = await fetch('/api/questions');
+        const data = await res.json();
+        
+        const filter = document.getElementById('filterCat').value;
+        const list = document.getElementById('q-list');
+        list.innerHTML = '';
+
+        // Filtrowanie i pętla
+        data.filter(q => filter === "ALL" || q.category === filter).forEach(q => {
+            // Formatowanie wyświetlania opcji
+            let optionsText = q.options && q.options.length > 0 
+                ? `<br><i>Opcje:</i> ${q.options.join(' | ')}` 
+                : '';
+            
+            let answerText = q.answer ? `<b>Prawidłowa:</b> ${q.answer}` : '<i>Zadanie otwarte/Głosowanie</i>';
+
+            list.innerHTML += `
+                <li class="question-item">
+                    <div>
+                        <div class="q-meta">${q.category}</div>
+                        <div class="q-text">${q.q}</div>
+                        <div class="q-details">${answerText} ${optionsText}</div>
+                    </div>
+                    <button class="btn-delete" onclick="deleteQuestion(${q.id})">USUŃ</button>
+                </li>
+            `;
+        });
+    }
+
+    // Dodawanie nowego pytania
+    async function addQuestion() {
+        const cat = document.getElementById('qCat').value;
+        const text = document.getElementById('qText').value;
+        const ans = document.getElementById('qAns').value;
+        
+        // Zbieranie opcji ABCD i filtrowanie pustych pól
+        let opts = [
+            document.getElementById('opt1').value,
+            document.getElementById('opt2').value,
+            document.getElementById('opt3').value,
+            document.getElementById('opt4').value
+        ].filter(val => val.trim() !== ""); // Usuwa puste pola
+
+        if(text.trim() === "") {
+            alert("Treść pytania nie może być pusta!");
+            return;
         }
-        async function addQuestion() {
-            const cat = document.getElementById('qCat').value;
-            const text = document.getElementById('qText').value;
-            const ans = document.getElementById('qAns').value;
-            await fetch('/api/questions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ category: cat, q: text, answer: ans, options: [ans, "Błędna1", "Błędna2", "Błędna3"] })
-            });
-            fetchQuestions();
-        }
-        async function deleteQuestion(id) {
+
+        const payload = {
+            category: cat,
+            q: text,
+            answer: ans,
+            options: opts
+        };
+
+        await fetch('/api/questions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        // Czyszczenie formularza po dodaniu
+        document.getElementById('qText').value = "";
+        document.getElementById('qAns').value = "";
+        document.getElementById('opt1').value = "";
+        document.getElementById('opt2').value = "";
+        document.getElementById('opt3').value = "";
+        document.getElementById('opt4').value = "";
+
+        fetchQuestions(); // Odśwież listę
+    }
+
+    // Usuwanie pytania
+    async function deleteQuestion(id) {
+        if(confirm("Czy na pewno chcesz usunąć to pytanie z bazy?")) {
             await fetch(`/api/questions/${id}`, { method: 'DELETE' });
             fetchQuestions();
         }
-        fetchQuestions();
-    </script>
+    }
+
+    // Załaduj pytania na start
+    fetchQuestions();
+</script>
+
 </body>
 </html>
