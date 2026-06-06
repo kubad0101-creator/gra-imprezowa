@@ -2,94 +2,243 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Zarządzanie Bazą Danych - Party Protocol</title>
+    <title>Zarządzanie Systemem - Party Protocol</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; padding: 20px; color: #333; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .card { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        h1, h2 { color: #2c3e50; }
-        .warning { background: #f39c12; color: white; padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 20px;}
-        button { padding: 12px 20px; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; background: #2980b9; color: white; width: 100%; margin-top: 15px;}
-        .btn-delete { background: #e74c3c; width: auto; margin: 0; padding: 5px 10px; font-size: 12px;}
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; color: #7f8c8d; }
-        input[type="text"], select { width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 6px; box-sizing: border-box; }
-        .question-list { list-style: none; padding: 0; }
-        .question-item { background: #fdfdfd; border-left: 5px solid #3498db; padding: 15px; margin-bottom: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;}
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #e2e8f0; margin: 0; display: flex; height: 100vh; color: #1e293b; }
+        
+        /* Sidebar (16 Kategorii) */
+        .sidebar { width: 300px; background: #0f172a; color: white; overflow-y: auto; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 20px; background: #1e293b; font-size: 1.2em; font-weight: bold; color: #38bdf8; text-align: center; }
+        .cat-btn { padding: 15px 20px; background: transparent; border: none; color: #cbd5e1; text-align: left; cursor: pointer; border-bottom: 1px solid #1e293b; font-size: 1em; transition: 0.2s; }
+        .cat-btn:hover { background: #334155; color: white; }
+        .cat-btn.active { background: #38bdf8; color: #0f172a; font-weight: bold; border-left: 5px solid #0284c7; }
+
+        /* Obszar główny */
+        .main-content { flex: 1; padding: 40px; overflow-y: auto; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        h1 { margin-top: 0; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        h2 { color: #334155; font-size: 1.2em; margin-bottom: 15px; }
+
+        /* Formularze */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { display: flex; flex-direction: column; margin-bottom: 15px;}
+        label { font-weight: bold; margin-bottom: 5px; color: #64748b; font-size: 0.9em; }
+        input[type="text"], input[type="number"] { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1em; }
+        button { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
+        .btn-save { background: #10b981; } .btn-save:hover { background: #059669; }
+        .btn-add { background: #3b82f6; width: 100%; margin-top: 10px; } .btn-add:hover { background: #2563eb; }
+        .btn-delete { background: #ef4444; padding: 8px 12px; font-size: 0.8em; }
+
+        /* Lista pytań */
+        .q-list { list-style: none; padding: 0; margin: 0; }
+        .q-item { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; }
+        .q-text { font-weight: bold; margin-bottom: 5px; }
+        .q-ans { font-size: 0.9em; color: #64748b; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>📚 Zarządzanie Pytaniami (CMS)</h1>
-    <div class="warning">
-        UWAGA: Gra działa teraz całkowicie automatycznie! Uruchamiasz ją przyciskiem "START GRY" bezpośrednio na ekranie Telewizora. Tutaj jedynie dodajesz lub usuwasz pytania z bazy.
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">PARTY PROTOCOL<br><span style="font-size: 0.6em; color: #94a3b8;">PANEL ADMINISTRATORA</span></div>
+        <!-- Klawisze kategorii wygenerowane przez JS -->
     </div>
 
-    <div class="card">
-        <h2>➕ Dodaj Element do Bazy</h2>
-        <div class="form-group">
-            <label>Typ Rundy / Mechanika:</label>
-            <select id="qType">
-                <option value="abcd">Szybki Strzał (ABCD)</option>
-                <option value="auction">Licytacja w Dół (Aukcja)</option>
-                <option value="vote">Sąd Społeczny (Głosowanie na osobę)</option>
-                <option value="open">Pytanie Otwarte (Krótki tekst/Liczba)</option>
-            </select>
+    <div class="main-content">
+        <div id="welcome-msg">
+            <h1>Wybierz kategorię z menu po lewej</h1>
+            <p>Zarządzaj czasem, punktacją oraz listą pytań dla każdej rundy z osobna.</p>
         </div>
-        <div class="form-group">
-            <label>Kategoria Wyświetlana (np. "1. Szybki Strzał" lub "Zadanie Fizyczne"):</label>
-            <input type="text" id="qCat" placeholder="Nazwa kategorii">
+
+        <div id="category-manager" style="display: none;">
+            <h1 id="cat-title">Nazwa Kategorii</h1>
+
+            <!-- Ustawienia Kategorii -->
+            <div class="card">
+                <h2>⚙️ Globalne ustawienia dla tej rundy</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Czas trwania rundy (sekundy):</label>
+                        <input type="number" id="cat-time">
+                    </div>
+                    <div class="form-group">
+                        <label>Punkty za wykonanie zadania:</label>
+                        <input type="number" id="cat-points">
+                    </div>
+                </div>
+                <button class="btn-save" onclick="saveCategoryConfig()">ZAPISZ USTAWIENIA RUNDY</button>
+            </div>
+
+            <!-- Dodawanie pytań -->
+            <div class="card">
+                <h2>➕ Dodaj pytanie/zadanie do tej puli</h2>
+                <div class="form-group">
+                    <label>Treść Pytania / Wyzwania:</label>
+                    <input type="text" id="new-q-text" placeholder="Wpisz treść...">
+                </div>
+
+                <div id="dynamic-inputs">
+                    <!-- JS wstawi tu pola w zależności od typu (ABCD lub Otwarte) -->
+                </div>
+
+                <button class="btn-add" onclick="addQuestion()">DODAJ DO BAZY</button>
+            </div>
+
+            <!-- Lista pytań w tej kategorii -->
+            <div class="card">
+                <h2>📚 Pula pytań w tej kategorii</h2>
+                <ul class="q-list" id="q-list"></ul>
+            </div>
         </div>
-        <div class="form-group">
-            <label>Treść:</label>
-            <input type="text" id="qText" placeholder="Pytanie lub treść zadania...">
-        </div>
-        <div class="form-group">
-            <label>Prawidłowa odpowiedź (Zostaw puste przy aukcji/głosowaniu):</label>
-            <input type="text" id="qAns" placeholder="Odpowiedź">
-        </div>
-        <button onclick="addQuestion()">DODAJ DO BAZY</button>
     </div>
 
-    <div class="card">
-        <h2>Lista Bazy Danych</h2>
-        <ul id="q-list" class="question-list"></ul>
-    </div>
-</div>
+    <script>
+        let config = {};
+        let questions = [];
+        let currentCategory = "";
 
-<script>
-    async function fetchQuestions() {
-        const res = await fetch('/api/questions');
-        const data = await res.json();
-        const list = document.getElementById('q-list');
-        list.innerHTML = '';
-        data.forEach(q => {
-            list.innerHTML += `
-                <li class="question-item">
-                    <div><b>[${q.category}]</b> ${q.q} <br><small>Odp: ${q.answer || 'Brak (Zadanie otwarte)'}</small></div>
-                    <button class="btn-delete" onclick="deleteQuestion(${q.id})">Usuń</button>
-                </li>`;
-        });
-    }
+        // Pobieranie danych z serwera
+        async function loadData() {
+            const resConf = await fetch('/api/config');
+            config = await resConf.json();
+            
+            const resQ = await fetch('/api/questions');
+            questions = await resQ.json();
 
-    async function addQuestion() {
-        const payload = {
-            type: document.getElementById('qType').value,
-            category: document.getElementById('qCat').value,
-            q: document.getElementById('qText').value,
-            answer: document.getElementById('qAns').value,
-            options: [] // Uproszczone dla bazy
-        };
-        await fetch('/api/questions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        fetchQuestions();
-    }
+            renderSidebar();
+        }
 
-    async function deleteQuestion(id) {
-        await fetch(`/api/questions/${id}`, { method: 'DELETE' });
-        fetchQuestions();
-    }
-    fetchQuestions();
-</script>
+        function renderSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            // Usuń wszystko z wyjątkiem headera
+            Array.from(sidebar.children).forEach(child => {
+                if(!child.classList.contains('sidebar-header')) child.remove();
+            });
+
+            Object.keys(config).forEach(catName => {
+                const btn = document.createElement('button');
+                btn.className = 'cat-btn';
+                btn.innerText = catName;
+                btn.onclick = () => selectCategory(catName, btn);
+                sidebar.appendChild(btn);
+            });
+        }
+
+        function selectCategory(catName, btnElement) {
+            currentCategory = catName;
+            
+            // Podświetlenie menu
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            if(btnElement) btnElement.classList.add('active');
+
+            document.getElementById('welcome-msg').style.display = 'none';
+            document.getElementById('category-manager').style.display = 'block';
+            
+            document.getElementById('cat-title').innerText = catName;
+            document.getElementById('cat-time').value = config[catName].time;
+            document.getElementById('cat-points').value = config[catName].points;
+
+            renderDynamicInputs(config[catName].type);
+            renderQuestionsList();
+        }
+
+        function renderDynamicInputs(type) {
+            const container = document.getElementById('dynamic-inputs');
+            container.innerHTML = ''; // Wyczyszczenie
+
+            if (type === 'abcd') {
+                container.innerHTML = `
+                    <div class="form-group"><label>Poprawna Odpowiedź:</label><input type="text" id="new-q-ans"></div>
+                    <label>Warianty Odpowiedzi (Podaj 4, w tym poprawną):</label>
+                    <div class="form-grid">
+                        <input type="text" id="opt1" placeholder="Opcja 1"><input type="text" id="opt2" placeholder="Opcja 2">
+                        <input type="text" id="opt3" placeholder="Opcja 3"><input type="text" id="opt4" placeholder="Opcja 4">
+                    </div>`;
+            } else if (type === 'open' || type === 'slider') {
+                container.innerHTML = `
+                    <div class="form-group"><label>Poprawna Odpowiedź / Wartość:</label><input type="text" id="new-q-ans"></div>`;
+            } else {
+                container.innerHTML = `<div style="color: #64748b; margin-bottom:15px;">Dla tego typu rundy (głosowanie, licytacja, rysowanie) system nie wymaga predefiniowanej odpowiedzi.</div>`;
+            }
+        }
+
+        function renderQuestionsList() {
+            const list = document.getElementById('q-list');
+            list.innerHTML = '';
+            
+            const catQuestions = questions.filter(q => q.category === currentCategory);
+            
+            if(catQuestions.length === 0) {
+                list.innerHTML = `<li style="color: #94a3b8;">Brak pytań w tej kategorii. Dodaj pierwsze!</li>`;
+                return;
+            }
+
+            catQuestions.forEach(q => {
+                let optionsHtml = (q.options && q.options.length > 0) ? `<br>Opcje: ${q.options.join(', ')}` : '';
+                list.innerHTML += `
+                    <li class="q-item">
+                        <div>
+                            <div class="q-text">${q.q}</div>
+                            <div class="q-ans">Odp: ${q.answer || 'Brak (Zadanie otwarte/Głosowanie)'} ${optionsHtml}</div>
+                        </div>
+                        <button class="btn-delete" onclick="deleteQuestion(${q.id})">USUŃ</button>
+                    </li>`;
+            });
+        }
+
+        async function saveCategoryConfig() {
+            const time = document.getElementById('cat-time').value;
+            const points = document.getElementById('cat-points').value;
+            
+            await fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ category: currentCategory, time, points })
+            });
+            alert("Zapisano ustawienia rundy!");
+            loadData(); // Przeładuj z serwera
+        }
+
+        async function addQuestion() {
+            const text = document.getElementById('new-q-text').value;
+            if(!text) return alert("Podaj treść pytania!");
+
+            let ans = "";
+            let opts = [];
+
+            if (document.getElementById('new-q-ans')) {
+                ans = document.getElementById('new-q-ans').value;
+            }
+            if (document.getElementById('opt1')) {
+                opts = [
+                    document.getElementById('opt1').value,
+                    document.getElementById('opt2').value,
+                    document.getElementById('opt3').value,
+                    document.getElementById('opt4').value
+                ].filter(val => val !== "");
+            }
+
+            const payload = { category: currentCategory, q: text, answer: ans, options: opts };
+
+            await fetch('/api/questions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            document.getElementById('new-q-text').value = ""; // Czyszczenie
+            loadData(); // Przeładuj listę i odbuduj interfejs
+            setTimeout(() => selectCategory(currentCategory, document.querySelector('.cat-btn.active')), 100);
+        }
+
+        async function deleteQuestion(id) {
+            if(confirm("Usunąć to pytanie?")) {
+                await fetch(`/api/questions/${id}`, { method: 'DELETE' });
+                loadData();
+                setTimeout(() => selectCategory(currentCategory, document.querySelector('.cat-btn.active')), 100);
+            }
+        }
+
+        loadData();
+    </script>
 </body>
 </html>
