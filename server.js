@@ -12,15 +12,35 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// BAZA DANYCH (Teraz panel admina będzie ją edytował)
+// --- KONFIGURACJA 16 KATEGORII (Czas i Punkty) ---
+let categoriesConfig = {
+    "1. Szybki Strzał": { type: "abcd", time: 15, points: 100 },
+    "2. Sąd Społeczny": { type: "vote", time: 30, points: 50 },
+    "3. Inżynieria i Kalkulacje": { type: "open", time: 45, points: 150 },
+    "4. Globtroter": { type: "abcd", time: 20, points: 100 },
+    "5. Licytacja w Dół": { type: "auction", time: 60, points: 0 }, // Punkty licytowane
+    "6. Historyczna Oś Czasu": { type: "slider", time: 30, points: 100 },
+    "7. Iluzja Optyczna": { type: "open", time: 20, points: 150 },
+    "8. Detektyw Zbiegowisk": { type: "open", time: 45, points: 100 },
+    "9. Archiwum X": { type: "photo", time: 60, points: 50 },
+    "10. Pikasso pod Presją": { type: "draw", time: 60, points: 100 },
+    "11. Biologia i Ciało": { type: "abcd", time: 10, points: 150 },
+    "12. Loża Szyderców": { type: "agree_disagree", time: 120, points: 50 },
+    "13. Side Quest": { type: "open", time: 30, points: 200 },
+    "14. Finał Finałów": { type: "auction", time: 60, points: 0 },
+    "15. Pojedynek Desperata": { type: "abcd", time: 15, points: 300 },
+    "16. Tajny Agent": { type: "info", time: 15, points: 500 }
+};
+
+// --- BAZA PYTAŃ ---
 let questionsDB = [
-    { id: 101, category: "1. Szybki Strzał", type: "abcd", q: "Jaka jest stolica Australii?", options: ["Canberra", "Sydney", "Melbourne", "Perth"], answer: "Canberra" },
-    { id: 501, category: "5. Licytacja w Dół", type: "auction", q: "Zrobienie 15 pompek w czasie poniżej 15 sekund.", options: [], answer: "" },
-    { id: 201, category: "2. Sąd Społeczny", type: "vote", q: "Kto z nas zginąłby jako pierwszy w horrorze?", options: [], answer: "" }
+    { id: 1, category: "1. Szybki Strzał", q: "Jaka jest stolica Australii?", options: ["Canberra", "Sydney", "Melbourne", "Perth"], answer: "Canberra" },
+    { id: 2, category: "5. Licytacja w Dół", q: "Zrobienie 15 pompek w czasie poniżej 15 sekund.", options: [], answer: "" },
+    { id: 3, category: "10. Pikasso pod Presją", q: "Narysuj leniwca przeżywającego kryzys finansowy.", options: [], answer: "" }
 ];
 
 let gameState = {
-    phase: 'lobby', // lobby, tactical, round, auction_verify, results
+    phase: 'lobby',
     currentQuestion: null,
     players: {},
     timer: 0,
@@ -29,7 +49,17 @@ let gameState = {
 
 let gameLoopInterval = null;
 
-// --- API DLA PANELU ADMINA (Tylko Baza Danych) ---
+// --- API DLA PANELU ADMINA ---
+app.get('/api/config', (req, res) => res.json(categoriesConfig));
+app.post('/api/config', (req, res) => {
+    const { category, time, points } = req.body;
+    if(categoriesConfig[category]) {
+        categoriesConfig[category].time = parseInt(time);
+        categoriesConfig[category].points = parseInt(points);
+    }
+    res.json({ success: true });
+});
+
 app.get('/api/questions', (req, res) => res.json(questionsDB));
 app.post('/api/questions', (req, res) => {
     const newQuestion = { id: Date.now(), ...req.body };
@@ -41,16 +71,14 @@ app.delete('/api/questions/:id', (req, res) => {
     res.json({ success: true });
 });
 
-// --- AUTONOMICZNY SILNIK GRY (GAME ENGINE) ---
-
+// --- AUTONOMICZNY SILNIK GRY ---
 function startNextRound() {
     if(questionsDB.length === 0) return;
     gameState.currentQuestion = questionsDB[Math.floor(Math.random() * questionsDB.length)];
     gameState.phase = 'tactical';
-    gameState.timer = 15; // 15 sekund w pokoju taktycznym
+    gameState.timer = 15; // 15s na pokój taktyczny
     
-    // Reset graczy i licytacji
-    gameState.currentLowestBid = { player: "Nikt jeszcze nie licytował", amount: 100, socketId: null };
+    gameState.currentLowestBid = { player: "Brak licytacji", amount: 100, socketId: null };
     for(let id in gameState.players) {
         gameState.players[id].boostActive = false;
         gameState.players[id].answered = false;
@@ -62,40 +90,34 @@ function startNextRound() {
 
 function enterRoundPhase() {
     gameState.phase = 'round';
-    // Licytacja ma 60 sekund, inne rundy 30 sekund
-    gameState.timer = gameState.currentQuestion.type === 'auction' ? 60 : 30; 
+    const catConfig = categoriesConfig[gameState.currentQuestion.category];
+    gameState.timer = catConfig ? catConfig.time : 30; // Dynamiczny czas
     io.emit('updateState', gameState);
 
     startTimer(() => {
-        if(gameState.currentQuestion.type === 'auction') {
-            enterAuctionVerify(); // Zatrzymuje grę na weryfikację zadania fizycznego
-        } else {
-            enterResultsPhase();
-        }
+        if(catConfig.type === 'auction') enterAuctionVerify();
+        else enterResultsPhase();
     });
 }
 
 function enterAuctionVerify() {
     gameState.phase = 'auction_verify';
     io.emit('updateState', gameState);
-    // Tutaj nie ma timera. Gra czeka, aż ktoś na TV kliknie ZALICZONE lub OBLANE.
 }
 
 function enterResultsPhase() {
     gameState.phase = 'results';
-    gameState.timer = 10; // 10 sekund na pokazanie wyników i rankingów
+    gameState.timer = 10;
     io.emit('updateState', gameState);
-    
-    startTimer(startNextRound); // Pętla wraca do początku!
+    startTimer(startNextRound);
 }
 
 function startTimer(callback) {
     clearInterval(gameLoopInterval);
     gameLoopInterval = setInterval(() => {
         gameState.timer--;
-        io.emit('tick', gameState.timer); // Wysyłanie samego czasu co sekundę
+        io.emit('tick', gameState.timer);
         
-        // Sprawdzanie czy wszyscy odpowiedzieli (przyspieszenie rundy)
         let allAnswered = true;
         let playerCount = 0;
         for(let id in gameState.players) {
@@ -103,7 +125,8 @@ function startTimer(callback) {
             if(!gameState.players[id].answered) allAnswered = false;
         }
 
-        if(gameState.timer <= 0 || (allAnswered && playerCount > 0 && gameState.currentQuestion.type !== 'auction')) {
+        const catType = categoriesConfig[gameState.currentQuestion?.category]?.type;
+        if(gameState.timer <= 0 || (allAnswered && playerCount > 0 && catType !== 'auction' && catType !== 'photo' && catType !== 'draw' && catType !== 'agree_disagree')) {
             clearInterval(gameLoopInterval);
             callback();
         }
@@ -112,7 +135,6 @@ function startTimer(callback) {
 
 // --- WEBSOCKETS ---
 io.on('connection', (socket) => {
-    
     socket.on('joinGame', (playerName) => {
         gameState.players[socket.id] = { name: playerName, score: 0, boostActive: false, answered: false };
         io.emit('updateState', gameState);
@@ -125,49 +147,41 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Sterowanie Grą z poziomu Telewizora
-    socket.on('tvStartGame', () => {
-        if(gameState.phase === 'lobby') startNextRound();
-    });
+    socket.on('tvStartGame', () => { if(gameState.phase === 'lobby') startNextRound(); });
 
     socket.on('tvAuctionResult', (success) => {
-        // Weryfikacja po licytacji
         if(gameState.currentLowestBid.socketId) {
             const winnerId = gameState.currentLowestBid.socketId;
             if(gameState.players[winnerId]) {
-                if(success) {
-                    gameState.players[winnerId].score += gameState.currentLowestBid.amount;
-                } else {
-                    // OSTRZEŻENIE ZREALIZOWANE: Odejmujemy wylicytowane punkty za porażkę
-                    gameState.players[winnerId].score -= gameState.currentLowestBid.amount;
-                }
+                if(success) gameState.players[winnerId].score += gameState.currentLowestBid.amount;
+                else gameState.players[winnerId].score -= gameState.currentLowestBid.amount;
             }
         }
         enterResultsPhase();
     });
 
-    // Zbieranie odpowiedzi
     socket.on('submitAnswer', (answer) => {
         const player = gameState.players[socket.id];
         if(!player || player.answered || gameState.phase !== 'round') return;
 
-        // Logika Licytacji na żywo (Gracz nie jest blokowany po wysłaniu, może licytować wiele razy)
-        if (gameState.currentQuestion.type === 'auction') {
+        const catConfig = categoriesConfig[gameState.currentQuestion.category];
+        
+        if (catConfig.type === 'auction') {
             const bid = parseInt(answer);
             if(bid < gameState.currentLowestBid.amount && bid > 0) {
                 gameState.currentLowestBid = { player: player.name, amount: bid, socketId: socket.id };
-                io.emit('auctionUpdate', gameState.currentLowestBid); // Natychmiastowy update na ekrany
+                io.emit('auctionUpdate', gameState.currentLowestBid);
             }
-            return; // Wychodzimy, bo przy licytacji gracz może pisać dalej
+            return; 
         }
 
-        // Standardowe punkty
         player.answered = true;
         let points = 0;
+        
         if(gameState.currentQuestion.answer && answer.toString().toLowerCase() === gameState.currentQuestion.answer.toString().toLowerCase()) {
-            points = 100;
-        } else if(gameState.currentQuestion.type === 'vote') {
-            points = 50; // Za udział w głosowaniu
+            points = catConfig.points;
+        } else if(catConfig.type === 'vote' || catConfig.type === 'photo' || catConfig.type === 'draw') {
+            points = catConfig.points; 
         }
 
         if(player.boostActive && points > 0) points *= 2;
