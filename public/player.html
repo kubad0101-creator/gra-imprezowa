@@ -6,37 +6,40 @@
     <title>Kontroler - Party Protocol</title>
     <style>
         body { font-family: Arial, sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; margin:0;}
-        input { width: 90%; padding: 20px; margin: 10px 0; border-radius: 8px; font-size: 1.5em; border: none; text-align: center; font-weight: bold;}
-        button { display: block; width: 100%; padding: 25px; margin: 10px 0; border-radius: 12px; font-size: 1.5em; font-weight: bold; border: none; cursor: pointer; color: white; }
+        input[type="text"], input[type="number"], textarea { width: 90%; padding: 20px; margin: 15px 0; border-radius: 10px; font-size: 1.2em; border: 2px solid #38bdf8; text-align: center; background: #1e293b; color: white; box-sizing: border-box;}
+        textarea { resize: vertical; min-height: 100px; text-align: left; }
+        button { display: block; width: 100%; padding: 25px; margin: 10px 0; border-radius: 12px; font-size: 1.5em; font-weight: bold; border: none; cursor: pointer; color: white; transition: 0.1s;}
+        button:active { transform: scale(0.98); }
         .btn-join { background: #10b981; }
         .btn-boost { background: #f59e0b; border: 4px solid #b45309; }
         .btn-opt { background: #334155; border: 2px solid #475569; }
         
         .auction-panel { background: #7f1d1d; padding: 20px; border-radius: 10px; margin-top: 20px; border: 2px solid #ef4444;}
-        #timer-display { font-size: 3em; font-weight: bold; color: #38bdf8; margin: 20px 0; }
+        #timer-display { font-size: 4em; font-weight: bold; color: #38bdf8; margin: 20px 0; }
     </style>
 </head>
 <body>
 
     <div id="join-screen">
         <h2>DOŁĄCZ DO GRY</h2>
-        <input type="text" id="playerName" placeholder="Twoje imię...">
-        <button class="btn-join" onclick="joinGame()">WEJDŹ</button>
+        <input type="text" id="playerName" placeholder="Wpisz swoje imię...">
+        <button class="btn-join" onclick="joinGame()">WEJDŹ DO GRY</button>
     </div>
 
     <div id="timer-display" style="display:none;"></div>
 
     <div id="wait-screen" style="display:none;">
-        <h2 style="color: #94a3b8; margin-top: 50px;">Patrz na główny ekran! 👀</h2>
+        <h2 style="color: #94a3b8; margin-top: 50px;">Patrz na telewizor! 👀</h2>
+        <p style="font-size: 1.2em; color: #64748b;">(Oczekujemy na akcję systemu)</p>
     </div>
 
     <div id="tactical-screen" style="display:none;">
-        <h2 style="color: #f59e0b;">POKÓJ TAKTYCZNY</h2>
+        <h2 style="color: #f59e0b; font-size: 2em;">POKÓJ TAKTYCZNY</h2>
         <button class="btn-boost" onclick="useBoost()">🔥 AKTYWUJ MNOŻNIK PUNKTÓW</button>
     </div>
 
     <div id="round-screen" style="display:none;">
-        <h2 id="q-hint" style="color: #38bdf8;">Twój ruch!</h2>
+        <h2 id="q-hint" style="color: #38bdf8; font-size: 1.8em;">Twój ruch!</h2>
         <div id="inputs-container"></div>
     </div>
 
@@ -47,7 +50,6 @@
         let currentPhase = "";
         let currentType = "";
 
-        // Odbieranie czasu z serwera
         socket.on('tick', (timeLeft) => {
             const t = document.getElementById('timer-display');
             t.innerText = timeLeft;
@@ -58,7 +60,6 @@
             }
         });
 
-        // Odbieranie licytacji na żywo do telefonu
         socket.on('auctionUpdate', (bid) => {
             if(document.getElementById('mobile-auc-val')) {
                 document.getElementById('mobile-auc-val').innerText = bid.amount + ' pkt';
@@ -81,7 +82,7 @@
         socket.on('updateState', (state) => {
             if(!myName) return;
             currentPhase = state.phase;
-            if(state.currentQuestion) currentType = state.currentQuestion.type;
+            if(state.currentQuestion) currentType = categoriesConfig[state.currentQuestion.category]?.type;
 
             document.getElementById('wait-screen').style.display = 'none';
             document.getElementById('tactical-screen').style.display = 'none';
@@ -94,9 +95,7 @@
                 document.getElementById('tactical-screen').style.display = 'block';
             } 
             else if (state.phase === 'round') {
-                
-                // Jeśli to NIE jest aukcja i gracz już odpowiedział -> zablokuj ekran
-                if(state.currentQuestion.type !== 'auction' && state.players[socket.id].answered) {
+                if(currentType !== 'auction' && state.players[socket.id].answered) {
                      document.getElementById('wait-screen').style.display = 'block';
                      return;
                 }
@@ -104,38 +103,35 @@
                 document.getElementById('round-screen').style.display = 'block';
                 const container = document.getElementById('inputs-container');
                 
-                // Generuj interfejs tylko raz na start rundy
                 if(container.innerHTML === "") {
                     const q = state.currentQuestion;
-                    document.getElementById('q-hint').innerText = "Co wybierasz?";
+                    document.getElementById('q-hint').innerText = "Wprowadź odpowiedź:";
 
-                    if(q.type === 'abcd') {
+                    if(currentType === 'abcd') {
                         q.options.forEach(opt => {
                             container.innerHTML += `<button class="btn-opt" onclick="sendAnswer('${opt}')">${opt}</button>`;
                         });
                     } 
-                    else if (q.type === 'open') {
+                    else if (currentType === 'open') {
                         container.innerHTML = `
-                            <input type="text" id="openAns" placeholder="...">
+                            <textarea id="openAns" placeholder="Wpisz swoją odpowiedź tutaj..."></textarea>
                             <button class="btn-join" onclick="sendAnswer(document.getElementById('openAns').value)">WYŚLIJ</button>`;
                     } 
-                    else if (q.type === 'vote') {
+                    else if (currentType === 'vote') {
                         for(let id in state.players) {
                             if(state.players[id].name !== myName) {
                                 container.innerHTML += `<button class="btn-opt" onclick="sendAnswer('${state.players[id].name}')">${state.players[id].name}</button>`;
                             }
                         }
                     }
-                    else if (q.type === 'auction') {
-                        // Aukcja ma unikalny interfejs
+                    else if (currentType === 'auction') {
                         container.innerHTML = `
                             <div class="auction-panel">
-                                <h3 style="margin:0;">Najniższa oferta:</h3>
-                                <div id="mobile-auc-val" style="font-size: 2em; font-weight: bold; color: #fef08a; margin: 10px 0;">${state.currentLowestBid.amount} pkt</div>
-                                <input type="number" id="auctionAns" placeholder="Przebij w dół!">
-                                <button class="btn-join" onclick="sendAnswer(document.getElementById('auctionAns').value)">DAJĘ MNIEJ!</button>
-                            </div>
-                        `;
+                                <h3 style="margin:0;">Najniższa oferta na tablicy:</h3>
+                                <div id="mobile-auc-val" style="font-size: 2.5em; font-weight: bold; color: #fef08a; margin: 15px 0;">${state.currentLowestBid.amount} pkt</div>
+                                <input type="number" id="auctionAns" placeholder="Podaj nową wartość...">
+                                <button class="btn-join" onclick="sendAnswer(document.getElementById('auctionAns').value)">PRZEBIJ W DÓŁ!</button>
+                            </div>`;
                     }
                 }
             }
@@ -145,16 +141,17 @@
             if(!ans) return;
             socket.emit('submitAnswer', ans);
             
-            // Czyszczenie i chowanie ekranu TYLKO jeśli to nie jest licytacja
             if (currentType !== 'auction') {
                 document.getElementById('inputs-container').innerHTML = '';
                 document.getElementById('round-screen').style.display = 'none';
                 document.getElementById('wait-screen').style.display = 'block';
             } else {
-                // Czyszczenie pola input dla aukcji, żeby gracz mógł od razu wpisać nową liczbę
                 document.getElementById('auctionAns').value = '';
             }
         }
+        
+        let categoriesConfig = {};
+        fetch('/api/config').then(r => r.json()).then(data => categoriesConfig = data);
     </script>
 </body>
 </html>
