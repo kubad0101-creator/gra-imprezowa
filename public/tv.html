@@ -2,22 +2,18 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Party Protocol - Ekran TV</title>
+    <title>Party Protocol - TV</title>
     <style>
+        /* (Zostaw swoje obecne style z tv.html, są dobre, podmieniamy tylko skrypt na dole) */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: white; text-align: center; margin: 0; padding: 40px; overflow-x: hidden; }
         .header { background: #1e293b; padding: 40px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         h1 { color: #38bdf8; font-size: 4em; margin: 0; }
         #timer-box { font-size: 5em; font-weight: bold; color: #f43f5e; margin: 20px 0; font-variant-numeric: tabular-nums; }
-        
-        /* Styl Aukcji */
         .auction-board { background: #7f1d1d; border: 4px solid #ef4444; padding: 30px; border-radius: 15px; margin: 30px 0; animation: pulse 2s infinite;}
         .auction-warning { color: #fca5a5; font-size: 1.5em; font-weight: bold; text-transform: uppercase;}
         .auction-live { font-size: 4em; color: white; margin: 20px 0; }
-        
         .btn-start { background: #10b981; border: none; padding: 20px 50px; font-size: 2em; color: white; border-radius: 15px; cursor: pointer; font-weight: bold; margin-top: 20px;}
-        .btn-start:hover { background: #059669; }
         .btn-judge { font-size: 1.5em; padding: 20px 40px; margin: 10px; border-radius: 10px; border: none; cursor: pointer; color: white; font-weight: bold;}
-        
         .players-grid { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 40px; }
         .player-card { background: #1e293b; border: 2px solid #64748b; padding: 20px; border-radius: 15px; width: 220px; font-size: 1.5em;}
         .score { color: #10b981; font-weight: bold; font-size: 1.5em;}
@@ -25,7 +21,6 @@
     </style>
 </head>
 <body>
-
     <div id="lobby-view" class="header">
         <h1>PARTY PROTOCOL</h1>
         <h2>Zalogujcie się na telefonach!</h2>
@@ -44,7 +39,7 @@
         <div style="background: #334155; padding: 40px; border-radius: 15px; font-size: 3em; margin: 20px 0;" id="q-text">Pytanie</div>
         
         <div id="auction-container" class="auction-board" style="display:none;">
-            <div class="auction-warning">⚠️ Uwaga! Jeśli wygrasz i nie zrobisz zadania, te punkty zostaną odjęte z Twojego konta! ⚠️</div>
+            <div class="auction-warning">⚠️ Uwaga! Brak wykonania zadania oznacza odjęcie punktów! ⚠️</div>
             <div class="auction-live">NAJNIŻSZA OFERTA: <br><span id="auc-val" style="color:#fef08a;">100 pkt</span> <br><span style="font-size:0.5em" id="auc-player">(Brak licytacji)</span></div>
         </div>
     </div>
@@ -52,14 +47,11 @@
     <div id="auction-verify-view" style="display:none;">
         <h1 style="color:#38bdf8;">WERYFIKACJA ZADANIA</h1>
         <h2 id="verify-text">Zwycięzca musi teraz wykonać zadanie!</h2>
-        <p style="font-size: 1.5em;">Grupo! Czy zadanie zostało wykonane prawidłowo?</p>
         <button class="btn-judge" style="background: #10b981;" onclick="socket.emit('tvAuctionResult', true)">✅ ZALICZONE (Zyskuje punkty)</button>
         <button class="btn-judge" style="background: #ef4444;" onclick="socket.emit('tvAuctionResult', false)">❌ OBLANE (Odejmuje punkty)</button>
     </div>
 
-    <div id="results-view" style="display:none;">
-        <h1 style="color: #10b981; font-size: 4em;">KONIEC RUNDY!</h1>
-    </div>
+    <div id="results-view" style="display:none;"><h1 style="color: #10b981; font-size: 4em;">KONIEC RUNDY!</h1></div>
 
     <hr style="margin: 50px 0; border-color: #334155;">
     <div id="players" class="players-grid"></div>
@@ -67,20 +59,17 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+        let categoriesConfig = {};
+        fetch('/api/config').then(r => r.json()).then(data => categoriesConfig = data);
 
-        // Nasłuchiwanie czasu
-        socket.on('tick', (timeLeft) => {
-            document.getElementById('timer-box').innerText = timeLeft;
-        });
+        socket.on('tick', (timeLeft) => { document.getElementById('timer-box').innerText = timeLeft; });
 
-        // Nasłuchiwanie Licytacji NA ŻYWO
         socket.on('auctionUpdate', (bid) => {
             document.getElementById('auc-val').innerText = bid.amount + ' pkt';
             document.getElementById('auc-player').innerText = '(' + bid.player + ')';
         });
 
         socket.on('updateState', (state) => {
-            // Renderowanie graczy
             const playersDiv = document.getElementById('players');
             playersDiv.innerHTML = '';
             for (let id in state.players) {
@@ -92,7 +81,6 @@
                     </div>`;
             }
 
-            // Zarządzanie widokami
             document.getElementById('lobby-view').style.display = 'none';
             document.getElementById('tactical-view').style.display = 'none';
             document.getElementById('round-view').style.display = 'none';
@@ -100,9 +88,7 @@
             document.getElementById('results-view').style.display = 'none';
             document.getElementById('timer-box').style.display = 'none';
 
-            if (state.phase === 'lobby') {
-                document.getElementById('lobby-view').style.display = 'block';
-            } 
+            if (state.phase === 'lobby') document.getElementById('lobby-view').style.display = 'block';
             else if (state.phase === 'tactical') {
                 document.getElementById('tactical-view').style.display = 'block';
                 document.getElementById('timer-box').style.display = 'block';
@@ -114,7 +100,8 @@
                 document.getElementById('q-cat').innerText = state.currentQuestion.category;
                 document.getElementById('q-text').innerText = state.currentQuestion.q;
                 
-                if (state.currentQuestion.type === 'auction') {
+                const catType = categoriesConfig[state.currentQuestion.category]?.type;
+                if (catType === 'auction') {
                     document.getElementById('auction-container').style.display = 'block';
                     document.getElementById('auc-val').innerText = state.currentLowestBid.amount + ' pkt';
                     document.getElementById('auc-player').innerText = '(' + (state.currentLowestBid.player || "Brak licytacji") + ')';
