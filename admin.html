@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administratora</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #ddd; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
+        button { padding: 10px 15px; cursor: pointer; background: #333; color: white; border: none; border-radius: 5px;}
+        input { padding: 10px; margin-right: 10px; width: 200px; }
+        li { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Panel Administratora</h1>
+    <div class="card">
+        <h2>Sterowanie Grą</h2>
+        <button onclick="startRound()" style="background: green;">Wylosuj i Start Rundy</button>
+        <button onclick="backToLobby()" style="background: red;">Wróć do Lobby</button>
+    </div>
+    <div class="card">
+        <h2>Dodaj Nowe Pytanie (Baza Danych)</h2>
+        <input type="text" id="qCat" placeholder="Kategoria">
+        <input type="text" id="qText" placeholder="Treść Pytania">
+        <input type="text" id="qAns" placeholder="Poprawna Odpowiedź">
+        <button onclick="addQuestion()" style="background: blue;">Dodaj Pytanie</button>
+    </div>
+    <div class="card">
+        <h2>Lista Pytań w Bazie</h2>
+        <ul id="q-list"></ul>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        function startRound() { socket.emit('adminStartRound'); }
+        function backToLobby() { socket.emit('adminBackToLobby'); }
+        async function fetchQuestions() {
+            const res = await fetch('/api/questions');
+            const data = await res.json();
+            const list = document.getElementById('q-list');
+            list.innerHTML = '';
+            data.forEach(q => {
+                list.innerHTML += `<li>[${q.category}] ${q.q} - <b>${q.answer}</b> <button onclick="deleteQuestion(${q.id})">Usuń</button></li>`;
+            });
+        }
+        async function addQuestion() {
+            const cat = document.getElementById('qCat').value;
+            const text = document.getElementById('qText').value;
+            const ans = document.getElementById('qAns').value;
+            await fetch('/api/questions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ category: cat, q: text, answer: ans, options: [ans, "Błędna1", "Błędna2", "Błędna3"] })
+            });
+            fetchQuestions();
+        }
+        async function deleteQuestion(id) {
+            await fetch(`/api/questions/${id}`, { method: 'DELETE' });
+            fetchQuestions();
+        }
+        fetchQuestions();
+    </script>
+</body>
+</html>

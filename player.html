@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontroler - Gra</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0f3460; color: white; text-align: center; padding: 20px; }
+        input, button { width: 100%; padding: 15px; margin: 10px 0; border-radius: 8px; font-size: 18px; border: none; }
+        button { background: #e94560; color: white; font-weight: bold; cursor: pointer; }
+        button:active { background: #b52b43; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .opt-btn { background: #16213e; border: 2px solid #e94560; }
+    </style>
+</head>
+<body>
+    <div id="join-screen">
+        <h2>Wpisz swoje imię</h2>
+        <input type="text" id="playerName" placeholder="Twój nick...">
+        <button onclick="joinGame()">DOŁĄCZ</button>
+    </div>
+    <div id="game-screen" style="display:none;">
+        <h2 id="status-text">Czekaj na rozpoczęcie rundy...</h2>
+        <div id="answers" class="options-grid" style="display:none;"></div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        function joinGame() {
+            const name = document.getElementById('playerName').value;
+            if(!name) return;
+            socket.emit('joinGame', name);
+            document.getElementById('join-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+        }
+        socket.on('updateState', (state) => {
+            if (state.phase === 'lobby') {
+                document.getElementById('status-text').innerText = "Czekaj w lobby na start...";
+                document.getElementById('answers').style.display = 'none';
+            } else if (state.phase === 'round') {
+                document.getElementById('status-text').innerText = "Wybierz odpowiedź na TV!";
+                document.getElementById('answers').style.display = 'grid';
+                const answersDiv = document.getElementById('answers');
+                answersDiv.innerHTML = '';
+                state.currentQuestion.options.forEach(opt => {
+                    answersDiv.innerHTML += `<button class="opt-btn" onclick="sendAnswer('${opt}')">${opt}</button>`;
+                });
+            }
+        });
+        function sendAnswer(ans) {
+            socket.emit('submitAnswer', ans);
+            document.getElementById('answers').style.display = 'none';
+            document.getElementById('status-text').innerText = "Odpowiedź wysłana!";
+        }
+    </script>
+</body>
+</html>

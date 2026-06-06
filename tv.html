@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Party Protocol - TV</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a2e; color: white; text-align: center; padding: 50px; }
+        .player-list { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 50px; }
+        .player-card { background: #16213e; padding: 20px; border-radius: 10px; min-width: 150px; border: 2px solid #0f3460; }
+        .score { font-size: 24px; font-weight: bold; color: #e94560; }
+        #question-container { display: none; margin-top: 50px; font-size: 32px; background: #0f3460; padding: 40px; border-radius: 15px;}
+    </style>
+</head>
+<body>
+    <div id="lobby-container">
+        <h1>Zeskanuj kod QR, aby dołączyć!</h1>
+        <h2>LOBBY OTWARTE</h2>
+    </div>
+    <div id="question-container">
+        <h2 id="q-text">Pytanie...</h2>
+    </div>
+    <hr style="margin-top: 50px; border-color: #0f3460;">
+    <h2>TABELA WYNIKÓW</h2>
+    <div id="players" class="player-list"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        socket.on('updateState', (state) => {
+            const playersDiv = document.getElementById('players');
+            playersDiv.innerHTML = '';
+            for (let id in state.players) {
+                const p = state.players[id];
+                playersDiv.innerHTML += `
+                    <div class="player-card">
+                        <h3>${p.name}</h3>
+                        <div class="score">${p.score} PKT</div>
+                    </div>`;
+            }
+            if (state.phase === 'lobby') {
+                document.getElementById('lobby-container').style.display = 'block';
+                document.getElementById('question-container').style.display = 'none';
+            } else if (state.phase === 'round') {
+                document.getElementById('lobby-container').style.display = 'none';
+                document.getElementById('question-container').style.display = 'block';
+                document.getElementById('q-text').innerText = state.currentQuestion.q;
+            }
+        });
+    </script>
+</body>
+</html>
