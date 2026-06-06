@@ -2,28 +2,94 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Panel Admina - Reżyserka</title>
+    <title>Zarządzanie Bazą Danych - Party Protocol</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #e2e8f0; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        button { padding: 15px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; color: white; width: 100%; margin-bottom: 10px;}
-        .btn-tac { background: #f59e0b; }
-        .btn-round { background: #10b981; }
-        .btn-res { background: #3b82f6; }
-        .btn-stop { background: #ef4444; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        h1, h2 { color: #2c3e50; }
+        .warning { background: #f39c12; color: white; padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 20px;}
+        button { padding: 12px 20px; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; background: #2980b9; color: white; width: 100%; margin-top: 15px;}
+        .btn-delete { background: #e74c3c; width: auto; margin: 0; padding: 5px 10px; font-size: 12px;}
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #7f8c8d; }
+        input[type="text"], select { width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 6px; box-sizing: border-box; }
+        .question-list { list-style: none; padding: 0; }
+        .question-item { background: #fdfdfd; border-left: 5px solid #3498db; padding: 15px; margin-bottom: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;}
     </style>
 </head>
 <body>
-    <h1>⚙️ REŻYSERKA GRY</h1>
-    <div class="card">
-        <h2>Flow Rundy</h2>
-        <button class="btn-tac" onclick="socket.emit('adminStartTactical')">1. Losuj RUNDĘ (Pokój Taktyczny)</button>
-        <button class="btn-round" onclick="socket.emit('adminStartRound')">2. Pokaż PYTANIE na TV</button>
-        <button class="btn-res" onclick="socket.emit('adminShowResults')">3. Odsłoń WYNIKI / Pokaż Rysunki i Zdjęcia</button>
-        <hr style="margin: 20px 0;">
-        <button class="btn-stop" onclick="socket.emit('adminBackToLobby')">Zakończ Fazę (Wróć do Lobby)</button>
+
+<div class="container">
+    <h1>📚 Zarządzanie Pytaniami (CMS)</h1>
+    <div class="warning">
+        UWAGA: Gra działa teraz całkowicie automatycznie! Uruchamiasz ją przyciskiem "START GRY" bezpośrednio na ekranie Telewizora. Tutaj jedynie dodajesz lub usuwasz pytania z bazy.
     </div>
-    <script src="/socket.io/socket.io.js"></script>
-    <script>const socket = io();</script>
+
+    <div class="card">
+        <h2>➕ Dodaj Element do Bazy</h2>
+        <div class="form-group">
+            <label>Typ Rundy / Mechanika:</label>
+            <select id="qType">
+                <option value="abcd">Szybki Strzał (ABCD)</option>
+                <option value="auction">Licytacja w Dół (Aukcja)</option>
+                <option value="vote">Sąd Społeczny (Głosowanie na osobę)</option>
+                <option value="open">Pytanie Otwarte (Krótki tekst/Liczba)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Kategoria Wyświetlana (np. "1. Szybki Strzał" lub "Zadanie Fizyczne"):</label>
+            <input type="text" id="qCat" placeholder="Nazwa kategorii">
+        </div>
+        <div class="form-group">
+            <label>Treść:</label>
+            <input type="text" id="qText" placeholder="Pytanie lub treść zadania...">
+        </div>
+        <div class="form-group">
+            <label>Prawidłowa odpowiedź (Zostaw puste przy aukcji/głosowaniu):</label>
+            <input type="text" id="qAns" placeholder="Odpowiedź">
+        </div>
+        <button onclick="addQuestion()">DODAJ DO BAZY</button>
+    </div>
+
+    <div class="card">
+        <h2>Lista Bazy Danych</h2>
+        <ul id="q-list" class="question-list"></ul>
+    </div>
+</div>
+
+<script>
+    async function fetchQuestions() {
+        const res = await fetch('/api/questions');
+        const data = await res.json();
+        const list = document.getElementById('q-list');
+        list.innerHTML = '';
+        data.forEach(q => {
+            list.innerHTML += `
+                <li class="question-item">
+                    <div><b>[${q.category}]</b> ${q.q} <br><small>Odp: ${q.answer || 'Brak (Zadanie otwarte)'}</small></div>
+                    <button class="btn-delete" onclick="deleteQuestion(${q.id})">Usuń</button>
+                </li>`;
+        });
+    }
+
+    async function addQuestion() {
+        const payload = {
+            type: document.getElementById('qType').value,
+            category: document.getElementById('qCat').value,
+            q: document.getElementById('qText').value,
+            answer: document.getElementById('qAns').value,
+            options: [] // Uproszczone dla bazy
+        };
+        await fetch('/api/questions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        fetchQuestions();
+    }
+
+    async function deleteQuestion(id) {
+        await fetch(`/api/questions/${id}`, { method: 'DELETE' });
+        fetchQuestions();
+    }
+    fetchQuestions();
+</script>
 </body>
 </html>
