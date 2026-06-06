@@ -6,36 +6,33 @@
     <title>Kontroler - Party Protocol</title>
     <style>
         body { font-family: Arial, sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; margin:0;}
-        input[type="text"], input[type="number"], input[type="range"] { width: 90%; padding: 15px; margin: 10px 0; border-radius: 8px; font-size: 1.2em; border: none; text-align: center; }
-        button, label.upload-btn { display: block; width: 100%; padding: 20px; margin: 10px 0; border-radius: 12px; font-size: 1.2em; font-weight: bold; border: none; cursor: pointer; color: white; text-align: center; box-sizing: border-box;}
+        input { width: 90%; padding: 20px; margin: 10px 0; border-radius: 8px; font-size: 1.5em; border: none; text-align: center; font-weight: bold;}
+        button { display: block; width: 100%; padding: 25px; margin: 10px 0; border-radius: 12px; font-size: 1.5em; font-weight: bold; border: none; cursor: pointer; color: white; }
         .btn-join { background: #10b981; }
-        .btn-boost { background: #f59e0b; padding: 30px; border: 4px solid #b45309; }
+        .btn-boost { background: #f59e0b; border: 4px solid #b45309; }
         .btn-opt { background: #334155; border: 2px solid #475569; }
-        .btn-agree { background: #10b981; } .btn-disagree { background: #ef4444; }
         
-        /* Obszar rysowania */
-        #drawCanvas { background: white; border: 2px solid #38bdf8; border-radius: 10px; touch-action: none; margin: 10px auto; display: block; }
-        
-        /* Wgrywanie plików */
-        input[type="file"] { display: none; }
-        .upload-btn { background: #3b82f6; border: 2px solid #2563eb; }
+        .auction-panel { background: #7f1d1d; padding: 20px; border-radius: 10px; margin-top: 20px; border: 2px solid #ef4444;}
+        #timer-display { font-size: 3em; font-weight: bold; color: #38bdf8; margin: 20px 0; }
     </style>
 </head>
 <body>
 
     <div id="join-screen">
-        <h2>Wpisz imię do gry</h2>
-        <input type="text" id="playerName" placeholder="Twój nick...">
-        <button class="btn-join" onclick="joinGame()">DOŁĄCZ</button>
+        <h2>DOŁĄCZ DO GRY</h2>
+        <input type="text" id="playerName" placeholder="Twoje imię...">
+        <button class="btn-join" onclick="joinGame()">WEJDŹ</button>
     </div>
 
+    <div id="timer-display" style="display:none;"></div>
+
     <div id="wait-screen" style="display:none;">
-        <h2 style="margin-top: 50px; color: #94a3b8;">Czekaj na rozwój wydarzeń...</h2>
+        <h2 style="color: #94a3b8; margin-top: 50px;">Patrz na główny ekran! 👀</h2>
     </div>
 
     <div id="tactical-screen" style="display:none;">
         <h2 style="color: #f59e0b;">POKÓJ TAKTYCZNY</h2>
-        <button class="btn-boost" onclick="useBoost()">🔥 BOOST x2</button>
+        <button class="btn-boost" onclick="useBoost()">🔥 AKTYWUJ MNOŻNIK PUNKTÓW</button>
     </div>
 
     <div id="round-screen" style="display:none;">
@@ -47,6 +44,26 @@
     <script>
         const socket = io();
         let myName = "";
+        let currentPhase = "";
+        let currentType = "";
+
+        // Odbieranie czasu z serwera
+        socket.on('tick', (timeLeft) => {
+            const t = document.getElementById('timer-display');
+            t.innerText = timeLeft;
+            if(timeLeft > 0 && currentPhase !== 'lobby' && currentPhase !== 'auction_verify') {
+                t.style.display = 'block';
+            } else {
+                t.style.display = 'none';
+            }
+        });
+
+        // Odbieranie licytacji na żywo do telefonu
+        socket.on('auctionUpdate', (bid) => {
+            if(document.getElementById('mobile-auc-val')) {
+                document.getElementById('mobile-auc-val').innerText = bid.amount + ' pkt';
+            }
+        });
 
         function joinGame() {
             myName = document.getElementById('playerName').value;
@@ -63,78 +80,63 @@
 
         socket.on('updateState', (state) => {
             if(!myName) return;
+            currentPhase = state.phase;
+            if(state.currentQuestion) currentType = state.currentQuestion.type;
 
             document.getElementById('wait-screen').style.display = 'none';
             document.getElementById('tactical-screen').style.display = 'none';
             document.getElementById('round-screen').style.display = 'none';
 
-            if (state.phase === 'lobby' || state.phase === 'results') {
+            if (state.phase === 'lobby' || state.phase === 'results' || state.phase === 'auction_verify') {
                 document.getElementById('wait-screen').style.display = 'block';
             } 
             else if (state.phase === 'tactical') {
                 document.getElementById('tactical-screen').style.display = 'block';
             } 
             else if (state.phase === 'round') {
-                if(state.players[socket.id] && state.players[socket.id].answered) {
+                
+                // Jeśli to NIE jest aukcja i gracz już odpowiedział -> zablokuj ekran
+                if(state.currentQuestion.type !== 'auction' && state.players[socket.id].answered) {
                      document.getElementById('wait-screen').style.display = 'block';
                      return;
                 }
 
                 document.getElementById('round-screen').style.display = 'block';
                 const container = document.getElementById('inputs-container');
-                container.innerHTML = '';
-                const q = state.currentQuestion;
-                document.getElementById('q-hint').innerText = q.q;
+                
+                // Generuj interfejs tylko raz na start rundy
+                if(container.innerHTML === "") {
+                    const q = state.currentQuestion;
+                    document.getElementById('q-hint').innerText = "Co wybierasz?";
 
-                // GENERATOR INTERFEJSÓW ZALEŻNIE OD KATEGORII
-                if(q.type === 'abcd') {
-                    q.options.forEach(opt => {
-                        container.innerHTML += `<button class="btn-opt" onclick="sendAnswer('${opt}')">${opt}</button>`;
-                    });
-                } 
-                else if (q.type === 'open') {
-                    container.innerHTML = `
-                        <input type="text" id="openAns" placeholder="Wpisz odpowiedź...">
-                        <button class="btn-join" onclick="sendAnswer(document.getElementById('openAns').value)">WYŚLIJ</button>`;
-                } 
-                else if (q.type === 'auction') {
-                    container.innerHTML = `
-                        <input type="number" id="auctionAns" placeholder="Podaj wartość...">
-                        <button class="btn-join" onclick="sendAnswer(document.getElementById('auctionAns').value)">ZALICYTUJ</button>`;
-                }
-                else if (q.type === 'slider') {
-                    container.innerHTML = `
-                        <input type="range" id="sliderAns" min="1800" max="2020" step="10" value="1950" oninput="document.getElementById('sliderVal').innerText = this.value">
-                        <h1 id="sliderVal">1950</h1>
-                        <button class="btn-join" onclick="sendAnswer(document.getElementById('sliderAns').value)">POTWIERDŹ DEKADĘ</button>`;
-                }
-                else if (q.type === 'agree_disagree') {
-                    container.innerHTML = `
-                        <button class="btn-agree" onclick="sendAnswer('ZGADZAM SIĘ')">ZGADZAM SIĘ</button>
-                        <button class="btn-disagree" onclick="sendAnswer('NIE ZGADZAM SIĘ')">NIE ZGADZAM SIĘ</button>`;
-                }
-                else if (q.type === 'vote') {
-                    for(let id in state.players) {
-                        if(state.players[id].name !== myName) {
-                            container.innerHTML += `<button class="btn-opt" onclick="sendAnswer('${state.players[id].name}')">${state.players[id].name}</button>`;
+                    if(q.type === 'abcd') {
+                        q.options.forEach(opt => {
+                            container.innerHTML += `<button class="btn-opt" onclick="sendAnswer('${opt}')">${opt}</button>`;
+                        });
+                    } 
+                    else if (q.type === 'open') {
+                        container.innerHTML = `
+                            <input type="text" id="openAns" placeholder="...">
+                            <button class="btn-join" onclick="sendAnswer(document.getElementById('openAns').value)">WYŚLIJ</button>`;
+                    } 
+                    else if (q.type === 'vote') {
+                        for(let id in state.players) {
+                            if(state.players[id].name !== myName) {
+                                container.innerHTML += `<button class="btn-opt" onclick="sendAnswer('${state.players[id].name}')">${state.players[id].name}</button>`;
+                            }
                         }
                     }
-                }
-                else if (q.type === 'photo') {
-                    container.innerHTML = `
-                        <label class="upload-btn">
-                            Wybierz z Rolki / Zrób Zdjęcie
-                            <input type="file" accept="image/*" id="photoInput" onchange="uploadPhoto()">
-                        </label>`;
-                }
-                else if (q.type === 'draw') {
-                    container.innerHTML = `
-                        <canvas id="drawCanvas" width="300" height="300"></canvas>
-                        <button class="btn-join" onclick="sendDrawing()">WYŚLIJ RYSUNEK</button>`;
-                    initCanvas();
-                }
-                else if (q.type === 'info') {
-                    container.innerHTML = `<button class="btn-join" onclick="sendAnswer('Zrozumiałem')">ZROZUMIAŁEM</button>`;
+                    else if (q.type === 'auction') {
+                        // Aukcja ma unikalny interfejs
+                        container.innerHTML = `
+                            <div class="auction-panel">
+                                <h3 style="margin:0;">Najniższa oferta:</h3>
+                                <div id="mobile-auc-val" style="font-size: 2em; font-weight: bold; color: #fef08a; margin: 10px 0;">${state.currentLowestBid.amount} pkt</div>
+                                <input type="number" id="auctionAns" placeholder="Przebij w dół!">
+                                <button class="btn-join" onclick="sendAnswer(document.getElementById('auctionAns').value)">DAJĘ MNIEJ!</button>
+                            </div>
+                        `;
+                    }
                 }
             }
         });
@@ -142,51 +144,16 @@
         function sendAnswer(ans) {
             if(!ans) return;
             socket.emit('submitAnswer', ans);
-        }
-
-        // --- OBSŁUGA ZDJĘĆ Z TELEFONU ---
-        function uploadPhoto() {
-            const file = document.getElementById('photoInput').files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onloadend = () => { sendAnswer(reader.result); };
-            reader.readAsDataURL(file); // Przerabia zdjęcie na ciąg tekstowy Base64
-        }
-
-        // --- OBSŁUGA RYSOWANIA PALCEM NA CANVASIE ---
-        function initCanvas() {
-            const canvas = document.getElementById('drawCanvas');
-            const ctx = canvas.getContext('2d');
-            let painting = false;
-
-            function getTouchPos(e) {
-                const rect = canvas.getBoundingClientRect();
-                const touch = e.touches[0] || e.changedTouches[0];
-                return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+            
+            // Czyszczenie i chowanie ekranu TYLKO jeśli to nie jest licytacja
+            if (currentType !== 'auction') {
+                document.getElementById('inputs-container').innerHTML = '';
+                document.getElementById('round-screen').style.display = 'none';
+                document.getElementById('wait-screen').style.display = 'block';
+            } else {
+                // Czyszczenie pola input dla aukcji, żeby gracz mógł od razu wpisać nową liczbę
+                document.getElementById('auctionAns').value = '';
             }
-            function getMousePos(e) {
-                const rect = canvas.getBoundingClientRect();
-                return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-            }
-
-            function start(e) { painting = true; draw(e); }
-            function end() { painting = false; ctx.beginPath(); }
-            function draw(e) {
-                if(!painting) return;
-                e.preventDefault(); // Blokuje scrollowanie ekranu przy rysowaniu
-                const pos = e.touches ? getTouchPos(e) : getMousePos(e);
-                ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.strokeStyle = 'black';
-                ctx.lineTo(pos.x, pos.y); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
-            }
-
-            canvas.addEventListener('mousedown', start); canvas.addEventListener('mouseup', end); canvas.addEventListener('mousemove', draw);
-            canvas.addEventListener('touchstart', start); canvas.addEventListener('touchend', end); canvas.addEventListener('touchmove', draw);
-        }
-
-        function sendDrawing() {
-            const canvas = document.getElementById('drawCanvas');
-            sendAnswer(canvas.toDataURL()); // Przerabia canvas na Base64 i wysyła na TV
         }
     </script>
 </body>
